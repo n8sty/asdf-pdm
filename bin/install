@@ -1,11 +1,29 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+set -Eeuo pipefail
 
-current_script_path=${BASH_SOURCE[0]}
-plugin_dir=$(dirname "$(dirname "$current_script_path")")
+trap cleanup SIGINT SIGTERM ERR
 
-# shellcheck source=../lib/utils.bash
-source "${plugin_dir}/lib/utils.bash"
+cleanup() {
+  trap - SIGINT SIGTERM ERR
+  echo
+  echo "Cleanup: Something went wrong!"
+  echo
+  echo "$(caller): ${BASH_COMMAND}"
+}
 
-install_version "$ASDF_INSTALL_TYPE" "$ASDF_INSTALL_VERSION" "$ASDF_INSTALL_PATH"
+if [ "${ASDF_INSTALL_TYPE:-}" != "version" ]; then
+	fail "asdf-pdm supports version (eg: 1.2.3) installs only"
+fi
+
+flags=()
+
+if test -n "${ASDF_INSTALL_PATH-}"; then
+  fail "asdf-pdm only supports installing to PDM's default installation location"
+fi
+
+if test -n "${ASDF_INSTALL_VERSION-}"; then
+  flags+=("-v ${ASDF_INSTALL_VERSION}")
+fi
+
+curl -sSL https://raw.githubusercontent.com/pdm-project/pdm/main/install-pdm.py | python3 - "${flags[@]}"
